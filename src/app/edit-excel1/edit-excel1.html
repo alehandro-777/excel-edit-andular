@@ -1,0 +1,7 @@
+ <div>
+    <input type="file" (change)="onFileChange($event)" accept=".xlsx" />
+    <button (click)="addRow()">Add row</button>
+    <button (click)="saveOnDisk()">Save xls</button>
+    <br>
+    <hot-table [data]="tableData"  [settings]="gridSettings"></hot-table>
+</div>

@@ -1,0 +1,8 @@
+{"type":"dropdown", "source": ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"], "cell":"red"}
+{"type":"checkbox", "label":  { "position": "after", "value": "In black? "}, "cell": true}
+{"type":"dropdown", "source": ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"], "cell":"red"}
+{"type":"dropdown", "source": ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"], "cell":"red"}
+{"type":"dropdown", "source": ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"], "cell":"red"}
+
+
+{"type":"numeric", "format": "#,##0.000", "range":{"min":0, "max":100}, "cell":55.5}
