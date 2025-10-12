@@ -33,8 +33,8 @@ export class EditExcel {
 
   @ViewChild(HotTableComponent, { static: false }) hotTable!: HotTableComponent;
 
-  dataForGrid: any[] = [];
-  rawDataTable: any[] = [];
+  dataForGridBinding: any[] = [];
+  rawDataTableFromApi: any[] = [];
 
   mergeCells: any[] = [];
 
@@ -126,13 +126,13 @@ export class EditExcel {
         });
       });
 
-      this.rawDataTable.push(rowData);
+      this.rawDataTableFromApi.push(rowData);
       this.styles.push(rowStyles);
       //console.log(rowData) //, rowStyles);
     });
 
     //2. Колонки динамически
-    this.columns = Object.keys(this.rawDataTable[0]).map(key => ({ data: key }));
+    this.columns = Object.keys(this.rawDataTableFromApi[0]).map(key => ({ data: key }));
     this.hotTable.hotInstance?.updateSettings({ columns: this.columns });
 
     // 3. Считываем слияния
@@ -151,8 +151,8 @@ export class EditExcel {
 
     //console.log(this.data1)//, this.mergeCells, this.columns);
 
-    for (let i = 0; i < this.rawDataTable.length; i++) {
-      const row = this.rawDataTable[i];
+    for (let i = 0; i < this.rawDataTableFromApi.length; i++) {
+      const row = this.rawDataTableFromApi[i];
       for (let j = 0; j < row.length; j++) {
         const cell = row[j];
 
@@ -299,7 +299,7 @@ export class EditExcel {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Sheet1');
 
-    this.dataForGrid.forEach((r, i) => {
+    this.dataForGridBinding.forEach((r, i) => {
       let row = Object.values(r);
 
       const excelRow = sheet.addRow(row.map((cell: any, j: number) => {
@@ -493,11 +493,11 @@ export class EditExcel {
 
     //console.log(this.data1)
     this.styles.splice(i, 0, [...this.styles[i]]);
-    this.rawDataTable.splice(i, 0, [...this.rawDataTable[i]]);
+    this.rawDataTableFromApi.splice(i, 0, [...this.rawDataTableFromApi[i]]);
     //console.log(this.data1)
     this.hotTable?.hotInstance?.alter('insert_row_below', i, 1);
     
-    const row = this.rawDataTable[i+1];
+    const row = this.rawDataTableFromApi[i+1];
       for (let j = 0; j < row.length; j++) {
         const cell = row[j];
 
@@ -516,7 +516,7 @@ export class EditExcel {
 
     //console.log(this.data1)
     this.styles.splice(i, 1);
-    this.rawDataTable.splice(i, 1);
+    this.rawDataTableFromApi.splice(i, 1);
     //console.log(this.data1) 
     this.hotTable?.hotInstance?.alter('remove_row', last[0], 1);
   }
@@ -525,8 +525,8 @@ export class EditExcel {
 
     this.hotTable?.hotInstance?.clear();
     this.styles = [];
-    this.rawDataTable = []; 
-    this.dataForGrid = [];
+    this.rawDataTableFromApi = []; 
+    this.dataForGridBinding = [];
 
     //console.log(this.data)
   }
