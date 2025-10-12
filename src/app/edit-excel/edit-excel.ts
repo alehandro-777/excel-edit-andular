@@ -29,23 +29,17 @@ import 'dayjs/locale/uk' // import locale
   styleUrl: './edit-excel.scss'
 })
 export class EditExcel {
-
-  constructor(private http: HttpClient, ) {
-
-  }
+  constructor(private http: HttpClient, ) {}
 
   @ViewChild(HotTableComponent, { static: false }) hotTable!: HotTableComponent;
 
-  selectedFile = "";
-  data: any[] = [];
-  data1: any[] = [];
+  dataForGrid: any[] = [];
+  rawDataTable: any[] = [];
 
   mergeCells: any[] = [];
 
   columns: any[] = [];
   styles: any[][] = [];
-
-  hotSettings: any;
 
   hfInstance = HyperFormula.buildEmpty({
     licenseKey: 'gpl-v3'
@@ -58,22 +52,16 @@ export class EditExcel {
     //height: "auto",
     //rowHeights: 10,
     //manualRowResize: true,
-
     autoWrapRow: true,
     autoWrapCol: true,
-
     formula:true,
-
     formulas: {
       engine: this.hfInstance,
     },
-
     //select остается в таблице при смене фокуса
     outsideClickDeselects: false,
-
     //преобразования после редактирования ячейки
     //afterChange: (changes, source) => this.onAfterChange(changes, source),
-
   };
   //end  grid settings !!!
 
@@ -104,7 +92,7 @@ export class EditExcel {
 
     await this.processBuffer(buffer);
 
-    //console.log(this.styles)
+    //console.log(this.rawDataTable)
   }
 
   async processBuffer(buffer: ArrayBuffer) {
@@ -138,13 +126,13 @@ export class EditExcel {
         });
       });
 
-      this.data1.push(rowData);
+      this.rawDataTable.push(rowData);
       this.styles.push(rowStyles);
       //console.log(rowData) //, rowStyles);
     });
 
     //2. Колонки динамически
-    this.columns = Object.keys(this.data1[0]).map(key => ({ data: key }));
+    this.columns = Object.keys(this.rawDataTable[0]).map(key => ({ data: key }));
     this.hotTable.hotInstance?.updateSettings({ columns: this.columns });
 
     // 3. Считываем слияния
@@ -163,12 +151,12 @@ export class EditExcel {
 
     //console.log(this.data1)//, this.mergeCells, this.columns);
 
-    for (let i = 0; i < this.data1.length; i++) {
-      const row = this.data1[i];
+    for (let i = 0; i < this.rawDataTable.length; i++) {
+      const row = this.rawDataTable[i];
       for (let j = 0; j < row.length; j++) {
         const cell = row[j];
 
-        this.setCell(cell, i, j);
+        this.setGridCell(cell, i, j);
 
       }      
     }
@@ -179,52 +167,38 @@ export class EditExcel {
 
   }
 
-  setCell(cell:any, row:number, col:number) {
+  setGridCell(cell:any, row:number, col:number) {
+
+        let numFmt = this.removeStrangeSym(this.styles[row][col].style.numFmt);// ? странные символы в начале и в конце строки формата
+
         if (typeof cell === 'number') {
               //number
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "type",  'numeric');
-            //this.hotTable?.hotInstance?.setCellMeta(row, col, "readOnly",  true);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorNumericRenderer.bind(this));
-            //this.hotTable?.hotInstance?.setCellMeta(row, col, "numericFormat",  { pattern: '0\u202f0.00', culture: 'ru-RU' });//   не работал формат разделение тысяч пробелами
-            this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+            this.setNumericCell(row, col, cell);
           return;
         }
-        let numFmt = this.removeStrangeSym(this.styles[row][col].style.numFmt);
-
         if ((Object.prototype.toString.call(cell) === '[object Date]' || cell instanceof Date) && numFmt.includes(":")) {
           let format = this.OpenXMLTime(numFmt);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "type",  'time');
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "timeFormat",  format);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "correctFormat",  true);
-            //this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid",  false);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorTextRenderer.bind(this));
-            this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+            this.setTimeCell(row, col, format, cell);
             //console.log(format)
           return;
         }
         //если не время то дата
         if (Object.prototype.toString.call(cell) === '[object Date]' || cell instanceof Date) {
             let format = this.OpenXMLDate(numFmt);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "type",  'date');
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "dateFormat",  format);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "correctFormat",  true);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "defaultDate",  "01.12.2000");
-            this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid",  false);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorTextRenderer.bind(this));
-            this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+            this.setDateCell(row, col, format, cell);
           return;
         }
         //  formula  
         if (typeof cell === 'string' && cell.startsWith("=")) {
-          this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorNumericRenderer.bind(this));// !! без numericRenderer не форматирует формулы !
-            this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
-            //console.log(this.styles[row][col].style.numFmt)
+            this.setFormulaCell(row, col, cell);
           return;
         } 
-        // JSON
+
+        // case: JSON - сложные ячейки dropdown, check ...+ с валидацией + indsert/update DB
         if (typeof cell === 'string' && cell.startsWith("{")) {
 
-          let cellConfig = JSON.parse(cell);  // JSON with "elt":"sserwer" !!!
+          let cellConfig = JSON.parse(cell);  // JSON with "":"" !!!
+          console.log(cellConfig);
 
           if (cellConfig.type == "dropdown") {
             this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorDropRenderer.bind(this));// !! без numericRenderer не форматирует формулы !
@@ -248,13 +222,50 @@ export class EditExcel {
             //console.log(cellConfig)
           return;
         }
+
+        //case simple string - если не сработали все остальные
         if (typeof cell === 'string' ) {
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "readOnly",  true);// затенение отключено в  renderer !!!
-            this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
-            this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorTextRenderer.bind(this));
-            //console.log(this.styles[row][col].style.numFmt)
+            this.setStringCell(row, col, cell); //по умолчанию отключено редактирование !
           return;
         } 
+  }
+
+  private setStringCell(row: number, col: number, cell: string) {
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "readOnly", true); // затенение отключено в  renderer !!!
+    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
+  }
+
+  private setFormulaCell(row: number, col: number, cell: string) {
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorNumericRenderer.bind(this)); // !! без numericRenderer не форматирует формулы !
+    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+  }
+
+  private setDateCell(row: number, col: number, format: string, cell: any) {
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "type", 'date');
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "dateFormat", format);
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "correctFormat", true);
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "defaultDate", "01.12.2000");
+    this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid", false);
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
+    this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+  }
+
+  private setTimeCell(row: number, col: number, format: string, cell: any) {
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "type", 'time');
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "timeFormat", format);
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "correctFormat", true);
+    //this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid",  false);
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
+    this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+  }
+
+  private setNumericCell(row: number, col: number, cell: number) {
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "type", 'numeric');
+    //this.hotTable?.hotInstance?.setCellMeta(row, col, "readOnly",  true);
+    this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorNumericRenderer.bind(this));
+    //this.hotTable?.hotInstance?.setCellMeta(row, col, "numericFormat",  { pattern: '0\u202f0.00', culture: 'ru-RU' });//   не работал формат разделение тысяч пробелами
+    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
   }
 
   onAfterChange(changes: CellChange[] | null, source: ChangeSource) {
@@ -288,7 +299,7 @@ export class EditExcel {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Sheet1');
 
-    this.data.forEach((r, i) => {
+    this.dataForGrid.forEach((r, i) => {
       let row = Object.values(r);
 
       const excelRow = sheet.addRow(row.map((cell: any, j: number) => {
@@ -482,15 +493,15 @@ export class EditExcel {
 
     //console.log(this.data1)
     this.styles.splice(i, 0, [...this.styles[i]]);
-    this.data1.splice(i, 0, [...this.data1[i]]);
+    this.rawDataTable.splice(i, 0, [...this.rawDataTable[i]]);
     //console.log(this.data1)
     this.hotTable?.hotInstance?.alter('insert_row_below', i, 1);
     
-    const row = this.data1[i+1];
+    const row = this.rawDataTable[i+1];
       for (let j = 0; j < row.length; j++) {
         const cell = row[j];
 
-        this.setCell(cell, i+1, j);
+        this.setGridCell(cell, i+1, j);
 
       } 
 
@@ -505,7 +516,7 @@ export class EditExcel {
 
     //console.log(this.data1)
     this.styles.splice(i, 1);
-    this.data1.splice(i, 1);
+    this.rawDataTable.splice(i, 1);
     //console.log(this.data1) 
     this.hotTable?.hotInstance?.alter('remove_row', last[0], 1);
   }
@@ -514,8 +525,8 @@ export class EditExcel {
 
     this.hotTable?.hotInstance?.clear();
     this.styles = [];
-    this.data1 = []; 
-    this.data = [];
+    this.rawDataTable = []; 
+    this.dataForGrid = [];
 
     //console.log(this.data)
   }

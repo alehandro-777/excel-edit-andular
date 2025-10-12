@@ -4,5 +4,5 @@
 {"type":"dropdown", "source": ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"], "cell":"red"}
 {"type":"dropdown", "source": ["yellow", "red", "orange", "green", "blue", "gray", "black", "white"], "cell":"red"}
 
-
-{"type":"numeric", "format": "#,##0.000", "range":{"min":0, "max":100}, "cell":55.5}
+//cell - > save values to DB
+{"type":"numeric", "format": "#,##0.000", "range":{"min":0, "max":100}, "cell":55.5, "out":{"obj":111, "par":222, "shift":0}}
