@@ -128,10 +128,10 @@ export class EditExcel {
 
       this.rawDataTableFromApi.push(rowData);
       this.styles.push(rowStyles);
-      //console.log(rowData) //, rowStyles);
+      //console.log(rowStyles) //, rowStyles);
     });
 
-    //2. Колонки динамически
+    //2. Колонки динамически  Внимание ! подумать, если не все колонки с первой строки !!!
     this.columns = Object.keys(this.rawDataTableFromApi[0]).map(key => ({ data: key }));
     this.hotTable.hotInstance?.updateSettings({ columns: this.columns });
 
@@ -163,7 +163,7 @@ export class EditExcel {
 
     this.hotTable.hotInstance?.updateSettings({ mergeCells: this.mergeCells });
 
-    //console.log(this.data)
+    //console.log(this.dataForGridBinding)
 
   }
 
@@ -176,18 +176,14 @@ export class EditExcel {
             this.setNumericCell(row, col, cell);
           return;
         }
-        if ((Object.prototype.toString.call(cell) === '[object Date]' || cell instanceof Date) && numFmt.includes(":")) {
-          let format = this.OpenXMLTime(numFmt);
-            this.setTimeCell(row, col, format, cell);
-            //console.log(format)
-          return;
-        }
-        //если не время то дата
+
+        //ячейка из excel всегда type дата, с фикс форматом для упрощения
         if (Object.prototype.toString.call(cell) === '[object Date]' || cell instanceof Date) {
-            let format = this.OpenXMLDate(numFmt);
+            let format = "DD.MM.YYYY HH:mm";
             this.setDateCell(row, col, format, cell);
           return;
         }
+               
         //  formula  
         if (typeof cell === 'string' && cell.startsWith("=")) {
             this.setFormulaCell(row, col, cell);
@@ -197,29 +193,44 @@ export class EditExcel {
         // case: JSON - сложные ячейки dropdown, check ...+ с валидацией + indsert/update DB
         if (typeof cell === 'string' && cell.startsWith("{")) {
 
-          let cellConfig = JSON.parse(cell);  // JSON with "":"" !!!
-          console.log(cellConfig);
+          let cellJson = JSON.parse(cell);  // JSON with "":"" !!!
+          //console.log(row, col, cell)
 
-          if (cellConfig.type == "dropdown") {
+          if (cellJson.type == "dropdown") {
             this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorDropRenderer.bind(this));// !! без numericRenderer не форматирует формулы !
               this.hotTable?.hotInstance?.setCellMeta(row, col, "type",  'dropdown');
-              this.hotTable?.hotInstance?.setCellMeta(row, col, "source",  cellConfig.source);
+              this.hotTable?.hotInstance?.setCellMeta(row, col, "source",  cellJson.source);
 
-          } else if (cellConfig.type == "checkbox") {
+          } else if (cellJson.type == "checkbox") {
               this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorCheckRenderer.bind(this));// !! без numericRenderer не форматирует формулы !
               this.hotTable?.hotInstance?.setCellMeta(row, col, "type",  'checkbox');
-              this.hotTable?.hotInstance?.setCellMeta(row, col, "label",  cellConfig.label);
+              //this.hotTable?.hotInstance?.setCellMeta(row, col, "label",  cellJson.label);
 
-          } else if (cellConfig.type == "numeric") {
-            this.styles[row][col].style.numFmt = cellConfig.format; //set cell format
-            this.styles[row][col].range = cellConfig.range;         //set input range
+          } else if (cellJson.type == "numeric") {
+            //this.styles[row][col].style.numFmt = cellConfig.format; //set cell format  не нужно - формат идет из стиля ячейки !
+            this.styles[row][col].range = cellJson.range;    //set input range
             this.hotTable?.hotInstance?.setCellMeta(row, col, "type",  'numeric');
             this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer",  this.colorNumericRenderer.bind(this));
             this.hotTable?.hotInstance?.setCellMeta(row, col, "validator",  this.customNumericValidator.bind(this));//
+
+          } else if (cellJson.type == "date") {
+            let format = this.ConvertFmtOpenXMLDate(numFmt);
+            this.setDateCell(row, col, format, cell);
+
+          } else if (cellJson.type == "time") {
+            let format = this.ConvertFmtOpenXMLTime(numFmt);
+            this.setTimeCell(row, col, format, cell);
+
+          } else if (cellJson.type == "datetime") {
+            let format = "DD.MM.YYYY HH:mm";  //fixed format
+            this.setDateCell(row, col, format, cell);
+
+          } else if (cellJson.type == "formula") {
+            this.setFormulaCell(row, col, cell); 
           }
 
-          this.hotTable?.hotInstance?.setDataAtCell(row, col, cellConfig.cell);
-            //console.log(cellConfig)
+          this.hotTable?.hotInstance?.setDataAtCell(row, col, cellJson.cell);
+          //console.log(cellConfig)
           return;
         }
 
@@ -231,9 +242,14 @@ export class EditExcel {
   }
 
   private setStringCell(row: number, col: number, cell: string) {
+    let numFmt = this.removeStrangeSym(this.styles[row][col].style.numFmt);
+
     this.hotTable?.hotInstance?.setCellMeta(row, col, "readOnly", true); // затенение отключено в  renderer !!!
-    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
+    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+
+
+    //console.log(numFmt)
   }
 
   private setFormulaCell(row: number, col: number, cell: string) {
@@ -245,7 +261,7 @@ export class EditExcel {
     this.hotTable?.hotInstance?.setCellMeta(row, col, "type", 'date');
     this.hotTable?.hotInstance?.setCellMeta(row, col, "dateFormat", format);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "correctFormat", true);
-    this.hotTable?.hotInstance?.setCellMeta(row, col, "defaultDate", "01.12.2000");
+    //this.hotTable?.hotInstance?.setCellMeta(row, col, "defaultDate", "01.12.2000");
     this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid", false);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
     this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
@@ -255,7 +271,7 @@ export class EditExcel {
     this.hotTable?.hotInstance?.setCellMeta(row, col, "type", 'time');
     this.hotTable?.hotInstance?.setCellMeta(row, col, "timeFormat", format);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "correctFormat", true);
-    //this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid",  false);
+    this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid",  false);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
     this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
   }
@@ -276,7 +292,7 @@ export class EditExcel {
 
     if (!hot) return;
 
-    console.log(changes)
+    //console.log(changes)
 
     changes.forEach(([row, col, oldValue, newValue]) => {
 
@@ -439,18 +455,7 @@ export class EditExcel {
     // ======= 3. Даты =======
     if (Object.prototype.toString.call(value) === '[object Date]' || value instanceof Date) {
       const date = dayjs(value);
-
-      // OpenXML → DayJS
-      const excelToDayjs = numFmt
-        .replace(/\[\$\]/g, '')  //[$]dd.mm.yyyy;@ -  приходит из экселя такой формат возможно глюк библиотеки !!!
-        .replace(/;@/g, '')
-        .replace(/y/g, 'Y')
-        .replace(/d/g, 'D')
-        .replace(/m/g, 'M')
-        .replace(/h/g, 'H')
-        .replace(/AM\/PM/i, 'A');
-
-      return date.format(excelToDayjs);
+      return date.format(numFmt);
     }
 
     // ======= 4. Текстовые шаблоны =======
@@ -460,24 +465,11 @@ export class EditExcel {
 
     return value.toString();
   }
-  OpenXMLDate(numFmt: string)  {
-
-      if (numFmt === null || numFmt === undefined) return "DD.MM.YY";
-
-      return  numFmt
-        .replace(/y/g, 'Y')
-        .replace(/d/g, 'D')
-        .replace(/m/g, 'M')
-        .replace(/h/g, 'H')
-        .replace(/AM\/PM/i, 'A');
+  ConvertFmtOpenXMLDate(numFmt: string)  {
+    return "DD.MM.YYYY";  //return fixed format
   }
-  OpenXMLTime(numFmt: string)  {
-
-      if (numFmt === null || numFmt === undefined) return "";
-
-      return  numFmt
-        .replace(/h/g, 'H')
-        .replace(/AM\/PM/i, 'A');
+  ConvertFmtOpenXMLTime(numFmt: string)  {
+    return "HH:mm:ss";  //return fixed format
   }
   removeStrangeSym(numFmt: string)  {
       if (numFmt === null || numFmt === undefined) return "";
@@ -543,5 +535,28 @@ export class EditExcel {
     reader.readAsArrayBuffer(file);
   }
 
+  postApi() {
+    const result = [];
+
+    for (let i = 0; i < this.rawDataTableFromApi.length; i++) {
+      const row = this.rawDataTableFromApi[i];
+      for (let j = 0; j < row.length; j++) {
+        const rawCell = row[j];
+        if (typeof rawCell === 'string' && rawCell.startsWith("{")) {
+          const cellJson = JSON.parse(rawCell);  // JSON with "":"" !!!
+          if (cellJson && cellJson.save) {
+            const data = this.hotTable?.hotInstance?.getDataAtCell(i, j);
+            let writeItem = {...cellJson.save}
+            writeItem.strValue = data;
+            //writeItem.ts
+            result.push(writeItem);
+            console.log(writeItem);            
+          } 
+        }
+      }
+    }
+
+
+  }
 }
 
