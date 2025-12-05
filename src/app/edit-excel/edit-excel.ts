@@ -33,7 +33,7 @@ export class EditExcel {
 
   @ViewChild(HotTableComponent, { static: false }) hotTable!: HotTableComponent;
 
-  dataForGridBinding: any[] = [];
+  dataForGridBinding: any[][] = [];
   rawDataTableFromApi: any[] = [];
 
   mergeCells: any[] = [];
@@ -88,10 +88,15 @@ export class EditExcel {
 
   async loadTemplateHTTP() {
    
-    let buffer = await firstValueFrom(this.http.get('http://localhost:3000/download', { responseType: 'arraybuffer' }));
-
+    //let buffer = await firstValueFrom(this.http.get('http://localhost:3000/download', { responseType: 'arraybuffer' }));
+    let buffer = await firstValueFrom(this.http.get('http://localhost:3000/template/download/1', { responseType: 'arraybuffer' }));
+    console.log("Start "+ new Date().toISOString());
+       
     await this.processBuffer(buffer);
 
+    console.log("End "+ new Date().toISOString());
+
+    //this.hotTable.hotInstance?.render();
     //console.log(this.rawDataTable)
   }
 
@@ -110,20 +115,21 @@ export class EditExcel {
 
       //1 чтение стилей
       row.eachCell((cell, colNum) => {
+        //console.log(rowNum, colNum)
         // сохранить значение или формулу как строку, если есть
         if (cell.value && typeof cell.value === 'object' && cell.formula) {
-          rowData.push('=' + cell.formula);
+          rowData[colNum-1] = '=' + cell.formula;
         } else {
-          rowData.push(cell.value);
+          rowData[colNum-1] = cell.value;
         }
-        rowStyles.push({
+        rowStyles[colNum-1] = {
           //цвет шрифта перенести не получится это глюк библиотеки !!!!
           font: cell.font,            //минимальный стиль ячейки
           fill: cell.fill,            //минимальный стиль ячейки
           border: cell.border,        //минимальный стиль ячейки
           alignment: cell.alignment,  //минимальный стиль ячейки
           style: cell.style           //минимальный стиль ячейки
-        });
+        };
       });
 
       this.rawDataTableFromApi.push(rowData);
@@ -132,7 +138,8 @@ export class EditExcel {
     });
 
     //2. Колонки динамически  Внимание ! подумать, если не все колонки с первой строки !!!
-    this.columns = Object.keys(this.rawDataTableFromApi[0]).map(key => ({ data: key }));
+    this.columns = Object.keys(this.rawDataTableFromApi[3]).map(key => ({ data: key }));
+    //console.log(this.columns)
     this.hotTable.hotInstance?.updateSettings({ columns: this.columns });
 
     // 3. Считываем слияния
@@ -150,26 +157,24 @@ export class EditExcel {
     });
 
     //console.log(this.data1)//, this.mergeCells, this.columns);
-
+    
     for (let i = 0; i < this.rawDataTableFromApi.length; i++) {
-      const row = this.rawDataTableFromApi[i];
-      for (let j = 0; j < row.length; j++) {
-        const cell = row[j];
+      const rowApi = this.rawDataTableFromApi[i];
+      for (let j = 0; j < rowApi.length; j++) {
+        const cellApi = rowApi[j];
 
-        this.setGridCell(cell, i, j);
+        this.setGridCell(cellApi, i, j);
 
       }      
     }
-
-    this.hotTable.hotInstance?.updateSettings({ mergeCells: this.mergeCells });
-
-    //console.log(this.dataForGridBinding)
+  
+    this.hotTable.hotInstance?.updateSettings({ mergeCells: this.mergeCells, data: this.dataForGridBinding });
+  
+    console.log(this.dataForGridBinding)
 
   }
 
   setGridCell(cell:any, row:number, col:number) {
-
-        let numFmt = this.removeStrangeSym(this.styles[row][col].style.numFmt);// ? странные символы в начале и в конце строки формата
 
         if (typeof cell === 'number') {
               //number
@@ -214,10 +219,12 @@ export class EditExcel {
             this.hotTable?.hotInstance?.setCellMeta(row, col, "validator",  this.customNumericValidator.bind(this));//
 
           } else if (cellJson.type == "date") {
+            let numFmt = this.removeStrangeSym(this.styles[row][col].style.numFmt);// ? странные символы в начале и в конце строки формата
             let format = this.ConvertFmtOpenXMLDate(numFmt);
             this.setDateCell(row, col, format, cell);
 
           } else if (cellJson.type == "time") {
+            let numFmt = this.removeStrangeSym(this.styles[row][col].style.numFmt);// ? странные символы в начале и в конце строки формата
             let format = this.ConvertFmtOpenXMLTime(numFmt);
             this.setTimeCell(row, col, format, cell);
 
@@ -227,18 +234,27 @@ export class EditExcel {
 
           } else if (cellJson.type == "formula") {
             this.setFormulaCell(row, col, cell); 
+
+          } else if (cellJson.type == "text") {
+            this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
           }
 
-          this.hotTable?.hotInstance?.setDataAtCell(row, col, cellJson.cell);
+          //this.hotTable?.hotInstance?.setDataAtCell(row, col, cellJson.cell);
+          this.setVorcedValue(row, col, cellJson.cell);
           //console.log(cellConfig)
           return;
         }
 
         //case simple string - если не сработали все остальные
         if (typeof cell === 'string' ) {
-            this.setStringCell(row, col, cell); //по умолчанию отключено редактирование !
+          this.setStringCell(row, col, cell); //по умолчанию отключено редактирование !
           return;
         } 
+  }
+
+  private setVorcedValue(row: number, col: number, cell: any) {
+    if (!this.dataForGridBinding[row]) this.dataForGridBinding[row] = [];
+    this.dataForGridBinding[row][col] = cell;
   }
 
   private setStringCell(row: number, col: number, cell: string) {
@@ -246,15 +262,15 @@ export class EditExcel {
 
     this.hotTable?.hotInstance?.setCellMeta(row, col, "readOnly", true); // затенение отключено в  renderer !!!
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
-    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
-
-
+    //this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+    this.setVorcedValue(row, col, cell);
     //console.log(numFmt)
   }
 
   private setFormulaCell(row: number, col: number, cell: string) {
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorNumericRenderer.bind(this)); // !! без numericRenderer не форматирует формулы !
-    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+    //this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+    this.setVorcedValue(row, col, cell);
   }
 
   private setDateCell(row: number, col: number, format: string, cell: any) {
@@ -264,7 +280,8 @@ export class EditExcel {
     //this.hotTable?.hotInstance?.setCellMeta(row, col, "defaultDate", "01.12.2000");
     this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid", false);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
-    this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+    //this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+    this.setVorcedValue(row, col, this.formatValueByNumFmt(cell, format));
   }
 
   private setTimeCell(row: number, col: number, format: string, cell: any) {
@@ -273,7 +290,8 @@ export class EditExcel {
     this.hotTable?.hotInstance?.setCellMeta(row, col, "correctFormat", true);
     this.hotTable?.hotInstance?.setCellMeta(0, 3, "allowInvalid",  false);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorTextRenderer.bind(this));
-    this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+    //this.hotTable?.hotInstance?.setDataAtCell(row, col, this.formatValueByNumFmt(cell, format));
+    this.setVorcedValue(row, col, this.formatValueByNumFmt(cell, format));
   }
 
   private setNumericCell(row: number, col: number, cell: number) {
@@ -281,7 +299,8 @@ export class EditExcel {
     //this.hotTable?.hotInstance?.setCellMeta(row, col, "readOnly",  true);
     this.hotTable?.hotInstance?.setCellMeta(row, col, "renderer", this.colorNumericRenderer.bind(this));
     //this.hotTable?.hotInstance?.setCellMeta(row, col, "numericFormat",  { pattern: '0\u202f0.00', culture: 'ru-RU' });//   не работал формат разделение тысяч пробелами
-    this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+    //this.hotTable?.hotInstance?.setDataAtCell(row, col, cell);
+    this.setVorcedValue(row, col, cell);
   }
 
   onAfterChange(changes: CellChange[] | null, source: ChangeSource) {
@@ -535,7 +554,7 @@ export class EditExcel {
     reader.readAsArrayBuffer(file);
   }
 
-  postApi() {
+  async postApi() {
     const result = [];
 
     for (let i = 0; i < this.rawDataTableFromApi.length; i++) {
@@ -546,17 +565,25 @@ export class EditExcel {
           const cellJson = JSON.parse(rawCell);  // JSON with "":"" !!!
           if (cellJson && cellJson.save) {
             const data = this.hotTable?.hotInstance?.getDataAtCell(i, j);
-            let writeItem = {...cellJson.save}
-            writeItem.strValue = data;
+            let wi:any = {};
+            wi.stringVal = String(data);
+            wi.numberVal = Number(data);
+            wi.boolVal = true;
+            wi.dateVal = "2024-12-31T02:00:00Z";
+            wi.entityId = +cellJson.save.ent;
+            wi.attributeId = +cellJson.save.att;
+            wi.ts = new Date(cellJson.save.ts);
             //writeItem.ts
-            result.push(writeItem);
-            console.log(writeItem);            
+            result.push(wi);
+            //console.log(writeItem);            
           } 
         }
       }
-    }
+    } 
 
-
+    let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/value', result));
+    //console.log(buffer)
   }
+
 }
 
