@@ -170,7 +170,7 @@ export class EditExcel {
   
     this.hotTable.hotInstance?.updateSettings({ mergeCells: this.mergeCells, data: this.dataForGridBinding });
   
-    console.log(this.dataForGridBinding)
+    //console.log(this.dataForGridBinding)
 
   }
 
@@ -566,22 +566,25 @@ export class EditExcel {
           if (cellJson && cellJson.save) {
             const data = this.hotTable?.hotInstance?.getDataAtCell(i, j);
             let wi:any = {};
+
             wi.stringVal = String(data);
             wi.numberVal = Number(data);
-            wi.boolVal = true;
-            wi.dateVal = "2024-12-31T02:00:00Z";
+            wi.boolVal = Boolean(data);
+            wi.dateVal = new Date(data);
+
             wi.entityId = +cellJson.save.ent;
             wi.attributeId = +cellJson.save.att;
             wi.ts = new Date(cellJson.save.ts);
             //writeItem.ts
             result.push(wi);
-            //console.log(writeItem);            
+            //console.log(wi);            
           } 
         }
       }
     } 
 
     let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/value', result));
+    let buffer2 = await firstValueFrom(this.http.get('http://localhost:3000/template/exec/?ids=[777]&ts=2025-01-01T01:00&from=2025-01-01T01:00&to=2025-01-02T01:00&o=[1,2,3,4,5]&p=[1,2,3,4]'));
     //console.log(buffer)
   }
 
