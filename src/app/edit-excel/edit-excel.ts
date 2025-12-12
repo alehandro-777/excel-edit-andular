@@ -584,7 +584,7 @@ export class EditExcel {
     } 
 
     let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/value', result));
-    let buffer2 = await firstValueFrom(this.http.get('http://localhost:3000/template/exec/?ids=[777]&ts=2025-01-01T01:00&from=2025-01-01T01:00&to=2025-01-02T01:00&o=[1,2,3,4,5]&p=[1,2,3,4]'));
+    let buffer2 = await firstValueFrom(this.http.get('http://localhost:3000/template/exec/1?ts=2025-01-01T01:00&from=2025-01-01T01:00&to=2025-01-02T01:00'));
     //console.log(buffer)
   }
 
