@@ -86,10 +86,10 @@ export class EditExcel {
     return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
   }
 
-  async loadTemplateHTTP() {
+  async loadTemplateHTTP(id: number) {
    
     //let buffer = await firstValueFrom(this.http.get('http://localhost:3000/download', { responseType: 'arraybuffer' }));
-    let buffer = await firstValueFrom(this.http.get('http://localhost:3000/template/download/1', { responseType: 'arraybuffer' }));
+    let buffer = await firstValueFrom(this.http.get(`http://localhost:3000/template/download/${id}`, { responseType: 'arraybuffer' }));
     console.log("Start "+ new Date().toISOString());
        
     await this.processBuffer(buffer);
