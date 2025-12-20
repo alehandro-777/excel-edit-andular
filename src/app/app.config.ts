@@ -10,7 +10,9 @@ import {
 } from "@handsontable/angular-wrapper";
 
 import { registerLanguageDictionary, ruRU } from 'handsontable/i18n';
-import { provideHttpClient } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HttpBusyInterceptor } from './http_busy.interceptor';
+import { HttpErrorInterceptor } from './http_error.interceptor';
 
 registerLanguageDictionary(ruRU);
 
@@ -28,7 +30,9 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptorsFromDi()),
     { provide: HOT_GLOBAL_CONFIG, useValue: globalHotConfig },
+    { provide: HTTP_INTERCEPTORS, useClass: HttpBusyInterceptor, multi: true },
+    { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true }
   ]
 };

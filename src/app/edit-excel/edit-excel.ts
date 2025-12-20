@@ -19,12 +19,17 @@ import { textRenderer, dropdownRenderer, checkboxRenderer } from 'handsontable/r
 
 import dayjs from 'dayjs';
 import 'dayjs/locale/uk' // import locale
+import { FormsModule } from "@angular/forms";
+import { JsonPipe } from "@angular/common";
+
+
+
 
  
 @Component({
   selector: 'app-edit-excel',
   standalone: true,
-  imports: [HotTableModule],
+  imports: [HotTableModule,  FormsModule, ], // JsonPipe ],//
   templateUrl: './edit-excel.html',
   styleUrl: './edit-excel.scss'
 })
@@ -32,6 +37,10 @@ export class EditExcel {
   constructor(private http: HttpClient, ) {}
 
   @ViewChild(HotTableComponent, { static: false }) hotTable!: HotTableComponent;
+
+
+  ts:string = "2025-01-01T00:00:00Z"; //temp test
+  ts_to:string = "2025-01-02T00:00:00Z"; //temp test
 
   dataForGridBinding: any[][] = [];
   rawDataTableFromApi: any[] = [];
@@ -87,7 +96,9 @@ export class EditExcel {
   }
 
   async loadTemplateHTTP(id: number) {
-   
+    //temp test
+    let buffer2 = await firstValueFrom(this.http.get(`http://localhost:3000/template/exec/${id}?ts=${this.ts}&from=${this.ts}&to=${this.ts_to}`));
+
     //let buffer = await firstValueFrom(this.http.get('http://localhost:3000/download', { responseType: 'arraybuffer' }));
     let buffer = await firstValueFrom(this.http.get(`http://localhost:3000/template/download/${id}`, { responseType: 'arraybuffer' }));
     console.log("Start "+ new Date().toISOString());
@@ -584,7 +595,6 @@ export class EditExcel {
     } 
 
     let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/value', result));
-    let buffer2 = await firstValueFrom(this.http.get('http://localhost:3000/template/exec/1?ts=2025-01-01T01:00&from=2025-01-01T01:00&to=2025-01-02T01:00'));
     //console.log(buffer)
   }
 

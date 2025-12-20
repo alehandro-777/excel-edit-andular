@@ -1,0 +1,21 @@
+.busy {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 6px;
+  background: #1976d2;
+  color: #fff;
+  text-align: center;
+  z-index: 10000;
+}
+.error {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #d32f2f;
+  color: white;
+  padding: 12px 16px;
+  border-radius: 4px;
+  z-index: 10000;
+}

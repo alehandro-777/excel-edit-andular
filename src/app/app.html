@@ -1,6 +1,15 @@
+@if (busy.busy()) {
+  <div class="busy">HTTP Загрузка...</div>
+}
 
+@if (errors.error(); as err) {
+  <div class="error">
+    {{ err.message }}
+    <button (click)="errors.clear()">×</button>
+  </div>
+}
 
-    <app-edit-excel></app-edit-excel>
+<app-edit-excel></app-edit-excel>
 
 
 <router-outlet />
