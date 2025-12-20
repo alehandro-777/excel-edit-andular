@@ -21,6 +21,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/uk' // import locale
 import { FormsModule } from "@angular/forms";
 import { JsonPipe } from "@angular/common";
+import { DateService } from "../date.service";
 
 
 
@@ -34,7 +35,7 @@ import { JsonPipe } from "@angular/common";
   styleUrl: './edit-excel.scss'
 })
 export class EditExcel {
-  constructor(private http: HttpClient, ) {}
+  constructor(private http: HttpClient, private dt: DateService) {}
 
   @ViewChild(HotTableComponent, { static: false }) hotTable!: HotTableComponent;
 
@@ -552,7 +553,6 @@ export class EditExcel {
 
     //console.log(this.data)
   }
-
   selectedFileChange(e: any) {
     const file = e.target.files[0];
     const reader = new FileReader();
@@ -564,7 +564,6 @@ export class EditExcel {
 
     reader.readAsArrayBuffer(file);
   }
-
   async postApi() {
     const result = [];
 
@@ -597,6 +596,15 @@ export class EditExcel {
     let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/value', result));
     //console.log(buffer)
   }
-
+  
+//----------------- test temp
+  incDay() {
+    this.ts = this.dt.addDays(this.ts, 1);
+    this.ts_to = this.dt.addDays(this.ts_to, 1);
+  }
+  decDay()  {
+    this.ts = this.dt.addDays(this.ts, -1);
+    this.ts_to = this.dt.addDays(this.ts_to, -1);
+  }
 }
 

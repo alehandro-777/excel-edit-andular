@@ -37,15 +37,15 @@ export class DateService {
   // ======================
 
   addDays(iso: string, days: number): string {
-    return this.toIso(addDays(this.parse(iso), days));
+    return addDays(this.parse(iso), days).toISOString();
   }
 
   addHours(iso: string, hours: number): string {
-    return this.toIso(addHours(this.parse(iso), hours));
+    return addHours(this.parse(iso), hours).toISOString();
   }
 
   addMinutes(iso: string, minutes: number): string {
-    return this.toIso(addMinutes(this.parse(iso), minutes));
+    return addMinutes(this.parse(iso), minutes).toISOString();
   }
 
   // ======================
@@ -53,15 +53,15 @@ export class DateService {
   // ======================
 
   subDays(iso: string, days: number): string {
-    return this.toIso(subDays(this.parse(iso), days));
+    return subDays(this.parse(iso), days).toISOString();
   }
 
   subHours(iso: string, hours: number): string {
-    return this.toIso(subHours(this.parse(iso), hours));
+    return subHours(this.parse(iso), hours).toISOString();
   }
 
   subMinutes(iso: string, minutes: number): string {
-    return this.toIso(subMinutes(this.parse(iso), minutes));
+    return subMinutes(this.parse(iso), minutes).toISOString();
   }
 
   diffInHours(a: string, b: string): number {
@@ -70,7 +70,7 @@ export class DateService {
 
 
   startOfDay(iso: string): string {
-    return this.toIso(startOfDay(this.parse(iso)));
+    return startOfDay(this.parse(iso)).toISOString();
   }
   
   now(): string {
