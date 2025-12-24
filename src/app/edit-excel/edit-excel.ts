@@ -577,13 +577,12 @@ export class EditExcel {
             const data = this.hotTable?.hotInstance?.getDataAtCell(i, j);
             let wi:any = {};
 
-            wi.stringVal = String(data);
-            wi.numberVal = Number(data);
-            wi.boolVal = Boolean(data);
-            wi.dateVal = new Date(data);
+            wi.strVal = String(data);
+            wi.numVal = Number(data);
+            wi.dtVal = new Date(data);
 
-            wi.entityId = +cellJson.save.ent;
-            wi.attributeId = +cellJson.save.att;
+            wi.ent = +cellJson.save.ent;
+            wi.att = +cellJson.save.att;
             wi.ts = new Date(cellJson.save.ts);
             //writeItem.ts
             result.push(wi);
