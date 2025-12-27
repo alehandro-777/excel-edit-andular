@@ -1,0 +1,29 @@
+   <div>
+    <button (click)="loadTemplateHTTP(1)">Шаблон 1</button>
+    <button (click)="loadTemplateHTTP(2)">Шаблон 2</button>
+    <button (click)="loadTemplateHTTP(3)">Шаблон 3</button>
+    <button (click)="incDay()">+</button>
+
+    <input type="text" class="form-control" id="name" required [(ngModel)]="ts" name="ts" />
+    <input type="text" class="form-control" id="name" required [(ngModel)]="ts_to" name="ts_to" />
+
+    <button (click)="decDay()">-</button>
+
+    <button (click)="saveExcel()">Сохранить Excel</button>
+    <button (click)="addRow()">Add</button>
+    <button (click)="delRow()">Delete</button>
+    <button (click)="reset()">Reset</button>
+    <button (click)="postApi()">Post</button>
+    <br>
+    
+    <input id="selectedFile" type="file" accept=".xlsx" (change)="selectedFileChange($event)" />
+  </div>
+  
+<br>
+
+ <div>
+    <hot-table #hotTable themeName="ht-theme-main" [data]="dataForGridBinding" [settings]="gridSettings" />
+  </div>
+  
+
+
