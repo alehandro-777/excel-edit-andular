@@ -520,11 +520,16 @@ export class EditExcel3 {
     this.hotTable?.hotInstance?.alter('insert_row_below', i, 1);
     
     const row = this.rawDataTableFromApi[i+1];
-    console.log(row)
+    //console.log(row)
 
       for (let j = 0; j < row.length; j++) {
-        const cell = row[j];
+        //подумать, временное решение... все колонки  JSON ???
+        let tmp = JSON.parse(row[j]);// temp ???
+        tmp.cell = "";
+        tmp.save.row = null;  //temp
 
+        const cell = JSON.stringify(tmp);
+        row[j] = cell;
         this.setGridCell(cell, i+1, j);
 
       } 
@@ -534,17 +539,45 @@ export class EditExcel3 {
     //this.hotTable?.hotInstance?.alter('remove_row', last[0], 1);
   }
 
-  delRow() {
+  async delRow() {
+    const result = [];
+
     let last = this.hotTable?.hotInstance?.getSelectedLast();
     if (last == undefined) return;
     let i = last[0];
+    //--------------------------------------------
+        //TEMP TEMP
+    const row = this.rawDataTableFromApi[i];
+    for (let j = 0; j < row.length; j++) {
+      const rawCell = row[j];
+      if (typeof rawCell === 'string' && rawCell.startsWith("{")) {
+        const cellJson = JSON.parse(rawCell);  // JSON with "":"" !!!
+        if (cellJson && cellJson.save) {
+          const data = this.hotTable?.hotInstance?.getDataAtCell(i, j);
+          let wi:any = {};
+          //подумать, нужно анализировать тип ячейки... ?
 
+          wi.row = +cellJson.save.row;
+          wi.col = +cellJson.save.col;
+
+          //writeItem.ts
+          result.push(wi);
+          //console.log(wi);            
+        } 
+      }
+    }
+    let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/row-eav/delete', result));
+    //----------------------------------------------------------------------------------------------
     //console.log(this.data1)
     this.styles.splice(i, 1);
     this.rawDataTableFromApi.splice(i, 1);
     //console.log(this.data1) 
     this.hotTable?.hotInstance?.alter('remove_row', last[0], 1);
+
+
+    //temp test soft delete
   }
+
   reset() {
     this.hotTable?.hotInstance?.updateSettings({data:[], columns:[]});
 
@@ -566,11 +599,12 @@ export class EditExcel3 {
 
     reader.readAsArrayBuffer(file);
   }
+
   async postApi() {
     const result = [];
-
     for (let i = 0; i < this.rawDataTableFromApi.length; i++) {
       const row = this.rawDataTableFromApi[i];
+      const result_row = [];
       for (let j = 0; j < row.length; j++) {
         const rawCell = row[j];
         if (typeof rawCell === 'string' && rawCell.startsWith("{")) {
@@ -578,7 +612,7 @@ export class EditExcel3 {
           if (cellJson && cellJson.save) {
             const data = this.hotTable?.hotInstance?.getDataAtCell(i, j);
             let wi:any = {};
-
+            //подумать, нужно анализировать тип ячейки... ?
             wi.strVal = String(data);
             wi.numVal = Number(data);
             wi.dtVal = new Date(data);
@@ -587,13 +621,14 @@ export class EditExcel3 {
             wi.col = +cellJson.save.col;
 
             //writeItem.ts
-            result.push(wi);
+            result_row.push(wi);
             //console.log(wi);            
           } 
         }
       }
+      result.push(result_row)
     } 
-
+    //подумать нужно ли обновлять всю таблицу или частями ???
     let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/row-eav', result));
     //console.log(buffer)
   }
