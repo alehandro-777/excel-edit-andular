@@ -615,7 +615,7 @@ export class EditExcel3 {
             //подумать, нужно анализировать тип ячейки... ?
             wi.strVal = String(data);
             wi.numVal = Number(data);
-            wi.dtVal = new Date(data);
+            wi.dtVal = new Date(data);//06.12.2025 00:00 -  2025-06-11T22:00:00.000Z  ОШИБКА !!
 
             wi.row = +cellJson.save.row;
             wi.col = +cellJson.save.col;
