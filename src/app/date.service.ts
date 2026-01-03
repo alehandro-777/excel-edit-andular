@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {
+import { format,
   parseISO,
   addDays,
   addHours,
@@ -75,6 +75,11 @@ export class DateService {
   
   now(): string {
     return formatISO(new Date());
+  }
+  
+  //dd.MM.yyyy HH:mm
+  format(dt: Date, fmt:string): string {
+    return format(dt, fmt);
   }
 
 }

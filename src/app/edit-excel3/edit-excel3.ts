@@ -526,7 +526,7 @@ export class EditExcel3 {
         //подумать, временное решение... все колонки  JSON ???
         let tmp = JSON.parse(row[j]);// temp ???
         tmp.cell = "";
-        tmp.save.row = null;  //temp
+        tmp.save.row = 0;  //temp
 
         const cell = JSON.stringify(tmp);
         row[j] = cell;
@@ -557,8 +557,7 @@ export class EditExcel3 {
           let wi:any = {};
           //подумать, нужно анализировать тип ячейки... ?
 
-          wi.row = +cellJson.save.row;
-          wi.col = +cellJson.save.col;
+          wi.id = +cellJson.save.row;
 
           //writeItem.ts
           result.push(wi);
@@ -566,7 +565,7 @@ export class EditExcel3 {
         } 
       }
     }
-    let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/row-eav/delete', result));
+    let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/table-e/delete/1', result));
     //----------------------------------------------------------------------------------------------
     //console.log(this.data1)
     this.styles.splice(i, 1);
@@ -604,32 +603,24 @@ export class EditExcel3 {
     const result = [];
     for (let i = 0; i < this.rawDataTableFromApi.length; i++) {
       const row = this.rawDataTableFromApi[i];
-      const result_row = [];
+      let wi:any = {};
       for (let j = 0; j < row.length; j++) {
         const rawCell = row[j];
         if (typeof rawCell === 'string' && rawCell.startsWith("{")) {
           const cellJson = JSON.parse(rawCell);  // JSON with "":"" !!!
           if (cellJson && cellJson.save) {
             const data = this.hotTable?.hotInstance?.getDataAtCell(i, j);
-            let wi:any = {};
-            //подумать, нужно анализировать тип ячейки... ?
-            wi.strVal = String(data);
-            wi.numVal = Number(data);
-            wi.dtVal = new Date(data);//06.12.2025 00:00 -  2025-06-11T22:00:00.000Z  ОШИБКА !!
+            wi.id = +cellJson.save.row;
+            wi[cellJson.save.col] = data;
 
-            wi.row = +cellJson.save.row;
-            wi.col = +cellJson.save.col;
-
-            //writeItem.ts
-            result_row.push(wi);
             //console.log(wi);            
           } 
         }
       }
-      result.push(result_row)
+      result.push(wi)
     } 
     //подумать нужно ли обновлять всю таблицу или частями ???
-    let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/row-eav', result));
+    let buffer = await firstValueFrom(this.http.patch('http://localhost:3000/table-e/rows/1', result));
     //console.log(buffer)
   }
   
